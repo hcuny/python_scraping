@@ -1,4 +1,4 @@
-__author__      = "Cunyuan Huang"
+__author__      = "C.Y. Huang"
 
 from bs4 import BeautifulSoup
 import json
