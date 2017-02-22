@@ -5,6 +5,15 @@ from urllib.request import urlopen
 import re
 
 #used later in the regular expression
+from bs4 import BeautifulSoup
+import json
+from urllib.request import urlopen
+import re
+import pandas as pd
+import cProfile
+import time
+
+#used later in the regular expression
 def norm(s): 
     keep = {'a', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'b', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z',
             'x', 'c', 'v', 'n', 'm', '<', '>', '"', '=', ' ',
@@ -37,10 +46,12 @@ def get_broadpage(mov_num, homepage):
     return page
 
 def parse_page(page):
-    district=[] #where the movie produced
-    forbid=[] #movies that are forbidened by douban
-    avgscore=[] #the average rating of this movie
-    
+    District=[] #where the movie produced
+    Forbid=[] #movies that are forbidened by douban
+    Rating=[] #the average rating of this movie
+    Title=[]
+    Genre=[]
+    Year=[]
     
     for i in range(len(page)):
         mypage = urlopen(page[i]).read().decode('utf-8')
@@ -48,34 +59,70 @@ def parse_page(page):
         pagemovie = mysoup.findAll('div', {"class": "item"})
 
         for j in range(len(pagemovie)):
-            try:
+            try:                
                 each = pagemovie[j]('a')[0].get('href', None)
                 print(each)
                 movie = urlopen(each).read().decode('utf-8')
                 thesoup = BeautifulSoup(movie, 'html.parser')
+                #title
+                title=thesoup.findAll('span', {"property": "v:itemreviewed"})[0].get_text()
+                Title.append(title)
+                print("Title:",title)
+                
+                yearorg=thesoup.findAll('span', {"class": "year"})[0].get_text()
+                year=re.findall('([0-9]+)', yearorg)[0]
+                
+                Year.append(year)
+                print("Year:",year)
+                
                 info1 = str(thesoup.findAll('div', {'id': 'info'}))
                 info2 = norm(info1)
                 info3 = info2.replace('/', ' ')
-                country = re.findall('地区: (.*) 语言', info3)  # will return a list  use Regular Expression
-                print(country)
-                district.append(country)
+                country = re.findall('地区: (.*) 语言', info3)  # will return a list use Regular Expression
+                District.append(country)
+                print("Country:",country)
+
                 scoretag = thesoup.findAll('strong', {'class': 'll rating_num'})
                 avscore = scoretag[0].get_text()
-                avgscore.append(avscore)
-                print(avscore)
+                Rating.append(avscore)
+                print("AverageRating:",avscore)
+                                
+                gen=thesoup.findAll('span', {"property": "v:genre"})
+
+                genre=[ele.get_text() for ele in gen]
+                Genre.append(genre)
+                print("Genre:",genre)
+                
+                time.sleep(0.5)
 
             except:
-                forbid.append(each)
+                Forbid.append(each)
                 print(i, 'th page', j, 'th movie is forbinden')
+                
+    #df   = pd.DataFrame([Title, Year, Genre, District, Rating])
+    df=pd.DataFrame()
+    df['Title']=Title
+    df['Year']=Year
+    df['Genre']=Genre
+    df['District']=District
+    df['Rating']=Rating
+    #cols = ['Title', 'Year','Genre','District','Rating']
+    #df.columns = cols
+    
+    return df
+
                 
 
 def main():
     homepage = 'https://movie.douban.com/people/53667837/collect'
     mov_num = totmovie(homepage)
     page=get_broadpage(mov_num,homepage)
-    parse_page(page)
+    df=parse_page(page)
+    #df.to_csv("Y://Douban.csv")
 
 
 if __name__ == '__main__':
+    print(1)
     main()
+
 
